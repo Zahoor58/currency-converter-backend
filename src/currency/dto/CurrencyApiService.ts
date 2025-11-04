@@ -1,57 +1,52 @@
-import { Injectable } from '@angular/core';
-import { HttpClient, HttpParams, HttpErrorResponse } from '@angular/common/http';
-import { environment } from '../../environments/environment';
-import { Observable, throwError } from 'rxjs';
-import { catchError } from 'rxjs/operators';
+// src/currency/currency.service.ts
+import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
+import axios from 'axios';
+import { ConfigService } from '@nestjs/config';
 
-@Injectable({
-  providedIn: 'root',
-})
+@Injectable()
 export class CurrencyService {
-  private baseUrl = environment.backendUrl + '/currency';
+    private baseUrl: string;
 
-  constructor(private http: HttpClient) {}
-
-  getLatest(base?: string): Observable<any> {
-    let params = new HttpParams();
-    if (base) params = params.set('base', base);
-    return this.http.get(`${this.baseUrl}/latest`, { params })
-      .pipe(catchError(this.handleError));
-  }
-
-  getHistorical(date: string, base?: string): Observable<any> {
-    let params = new HttpParams().set('date', date);
-    if (base) params = params.set('base', base);
-    return this.http.get(`${this.baseUrl}/historical`, { params })
-      .pipe(catchError(this.handleError));
-  }
-
-  getSymbols(): Observable<any> {
-    return this.http.get(`${this.baseUrl}/symbols`)
-      .pipe(catchError(this.handleError));
-  }
-
-  private handleError(error: HttpErrorResponse): Observable<never> {
-    let errorMessage = 'An error occurred';
-    
-    if (error.error instanceof ErrorEvent) {
-      // Client-side or network error
-      errorMessage = `Network error: ${error.error.message}`;
-    } else {
-      // Backend returned an unsuccessful response code
-      if (error.error && typeof error.error === 'object') {
-        if (error.error.details) {
-          errorMessage = error.error.details;
-        } else if (error.error.message) {
-          errorMessage = error.error.message;
-        } else {
-          errorMessage = `Server error: ${error.status} - ${error.statusText}`;
-        }
-      } else {
-        errorMessage = `Server error: ${error.status} - ${error.statusText}`;
-      }
+    constructor(private configService: ConfigService) {
+        this.baseUrl = this.configService.get('CURRENCY_API_BASE') + '/currency';
     }
-    
-    return throwError(() => ({ message: errorMessage, status: error.status }));
-  }
+
+    async getLatest(base?: string): Promise<any> {
+        try {
+            const params = base ? { base } : {};
+            const response = await axios.get(`${this.baseUrl}/latest`, { params });
+            return response.data;
+        } catch (error: any) {
+            throw new HttpException(
+                error.response?.data || 'Error fetching latest currency',
+                error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
+            );
+        }
+    }
+
+    async getHistorical(date: string, base?: string): Promise<any> {
+        try {
+            const params: any = { date };
+            if (base) params.base = base;
+            const response = await axios.get(`${this.baseUrl}/historical`, { params });
+            return response.data;
+        } catch (error: any) {
+            throw new HttpException(
+                error.response?.data || 'Error fetching historical currency',
+                error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
+            );
+        }
+    }
+
+    async getSymbols(): Promise<any> {
+        try {
+            const response = await axios.get(`${this.baseUrl}/symbols`);
+            return response.data;
+        } catch (error: any) {
+            throw new HttpException(
+                error.response?.data || 'Error fetching symbols',
+                error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
+            );
+        }
+    }
 }
