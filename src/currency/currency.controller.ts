@@ -1,23 +1,28 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Query, ValidationPipe, UsePipes } from '@nestjs/common';
 import { CurrencyService } from './currency.service';
+import { HistoricalQueryDto } from './dto/HistoricalQueryDto';
+import { LatestQueryDto } from './dto/LatestQueryDto';
+
 
 @Controller('currency')
 export class CurrencyController {
     constructor(private readonly currencyService: CurrencyService) {}
 
     @Get('latest')
-    async getLatest(@Query('base') base?: string) {
-        return this.currencyService.latest(base);
+    @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
+    async getLatest(@Query() query: LatestQueryDto) {
+        return this.currencyService.latest(query.base);
     }
 
     @Get('historical')
-    async getHistorical(@Query('date') date: string, @Query('base') base?: string) {
-        return this.currencyService.historical(base, date);
+    @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
+    async getHistorical(@Query() query: HistoricalQueryDto) {
+        return this.currencyService.historical(query.base, query.date);
     }
 
     @Get('symbols')
     async getSymbols() {
-        // returns latest and from that extract currencies on frontend
         return this.currencyService.symbols();
     }
 }
+
